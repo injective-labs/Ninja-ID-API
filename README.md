@@ -1,98 +1,172 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Ninja-ID-API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A comprehensive identity verification and reputation scoring API built on the Injective blockchain. Ninja-ID combines NFT ownership verification, multi-dimensional reputation scoring, and Passkey authentication to create a trustworthy identity platform.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## What This API Does
 
-## Description
+**Ninja-ID-API** provides:
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- 🔐 **NFT-Based Identity Verification** - Verify N1NJ4 NFT ownership on Injective
+- ⭐ **Multi-Dimensional Reputation Scoring** - Calculate reputation based on:
+  - NFT Holder status (50%)
+  - Transaction history (15%)
+  - Staking duration (15%)
+  - Verification frequency (20%)
+- 🔑 **Passkey Authentication** - WebAuthn-based secure authentication
+- 📊 **Real-Time Blockchain Data** - Live transaction tracking via Blockscout API
+- 🏅 **Tier-Based Badges** - Bronze, Silver, Gold, Platinum tiers based on reputation
 
-## Project setup
+## Main Endpoints
 
+### Authentication
+- **POST** `/api/passkey/challenge` - Generate a Passkey challenge for registration/authentication
+  - Query: `action` (register|authenticate)
+  - Response: Challenge and expiration details
+
+- **POST** `/api/passkey/verify` - Verify Passkey credential
+  - Body: `credentialId`, `response`
+  - Response: JWT session token
+
+### N1NJ4 Identity API
+- **POST** `/api/v1/n1nj4/verify` - Verify N1NJ4 NFT ownership and create/update identity
+  - Header: `X-Wallet-Address`
+  - Body: `walletAddress`, `credentialId`
+  - Response: JWT token + Identity details with reputation score
+  - Returns 401 if no N1NJ4 NFT found
+
+- **GET** `/api/v1/n1nj4/reputation/:credentialId` - Fetch reputation score for a verified identity
+  - Response: Overall score, breakdown by component, tier, badges
+
+### Health Check
+- **GET** `/health` - API health status with database/Redis/Blockscout connectivity
+
+## Injective Data Sources
+
+### 1. **Injective RPC** (NFT Verification)
+- **URL**: `https://k8s.testnet.json-rpc.injective.network`
+- **Purpose**: Query N1NJ4 NFT contract (ERC721) for ownership verification
+- **Contract**: `0x3d5D8D565a20e648bD478FDC831b6576CEC54ab2`
+- **Method**: `balanceOf()` to check if wallet holds N1NJ4 NFT
+- **Data Used**: Checks NFT balance to verify identity
+
+### 2. **Blockscout API** (Transaction History)
+- **URL**: `https://testnet.blockscout-api.injective.network`
+- **Purpose**: Retrieve transaction history for reputation scoring
+- **Data Used**: Live transaction count, timestamps, gas usage
+- **Endpoint**: `/api/v2/addresses/{address}/transactions`
+- **Use Case**: Real-time scores based on actual blockchain activity
+
+### 3. **PostgreSQL (Supabase)**
+- **Purpose**: Store verified identities and reputation scores
+- **Tables**: 
+  - `n1nj4_identity` - User credentials, reputation scores, verification history
+  - `passkey_credential` - WebAuthn credentials
+
+### 4. **Redis (Upstash)**
+- **Purpose**: Cache JWT sessions and challenge tokens
+- **TTL**: 30 minutes for sessions, 10 minutes for challenges
+
+## How to Run Locally
+
+### Prerequisites
+- Node.js 18+
+- pnpm
+- PostgreSQL (Supabase connection string)
+- Redis (Upstash connection string)
+
+### Setup
+
+1. **Clone the repository**
 ```bash
-$ pnpm install
+git clone https://github.com/injective-labs/Ninja-ID-API.git
+cd inj-pass-backend
 ```
 
-## Compile and run the project
-
+2. **Install dependencies**
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+pnpm install
 ```
 
-## Run tests
+3. **Configure environment variables**
+Copy `.env.example` to `.env` and fill in:
+```env
+# Server
+PORT=3000
+NODE_ENV=development
 
-```bash
-# unit tests
-$ pnpm run test
+# Passkey Config
+RP_ID=localhost
+ORIGINS=http://localhost:3001
 
-# e2e tests
-$ pnpm run test:e2e
+# JWT Token
+JWT_SECRET=your-secret-key
 
-# test coverage
-$ pnpm run test:cov
+# PostgreSQL (Supabase)
+DATABASE_URL=postgresql://user:password@host:5432/database
+
+# Redis (Upstash)
+REDIS_URL=rediss://default:password@host:6379
+
+# Injective
+INJECTIVE_RPC_URL=https://k8s.testnet.json-rpc.injective.network
+NFT_CONTRACT_ADDRESS=0x3d5D8D565a20e648bD478FDC831b6576CEC54ab2
+
+# Blockscout API
+BLOCKSCOUT_API_URL=https://testnet.blockscout-api.injective.network
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+4. **Run in development mode**
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+pnpm run start:dev
+```
+API will be available at `http://localhost:3000`
+
+5. **Build for production**
+```bash
+pnpm run build
+pnpm run start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Testing
 
-## Resources
+```bash
+# Test Passkey Challenge
+curl -X POST http://localhost:3000/api/passkey/challenge \
+  -H "Content-Type: application/json" \
+  -d '{"action":"register"}'
 
-Check out a few resources that may come in handy when working with NestJS:
+# Test N1NJ4 Reputation
+curl http://localhost:3000/api/v1/n1nj4/reputation/{credentialId}
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# Test Health
+curl http://localhost:3000/health
+```
 
-## Support
+## Technology Stack
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- **Runtime**: Node.js + TypeScript
+- **Framework**: NestJS
+- **Database**: PostgreSQL (TypeORM)
+- **Cache**: Redis
+- **Blockchain**: ethers.js v5.7.2 + Injective RPC
+- **Address Conversion**: bech32 (Injective to EVM)
+- **Authentication**: WebAuthn + JWT
+- **HTTP Client**: axios
+- **Deployment**: Vercel Serverless
 
-## Stay in touch
+## Network
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+**Injective Testnet**
+- Chain ID: 1439
+- RPC: https://k8s.testnet.json-rpc.injective.network
+- N1NJ4 NFT Contract: 0x3d5D8D565a20e648bD478FDC831b6576CEC54ab2
+- Blockscout Explorer: https://testnet.blockscout-api.injective.network
+
+## Live Demo
+
+- **API URL**: https://ninja-id-api.vercel.app
+- **Frontend**: https://inj-pass-frontend-test.vercel.app
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+MIT
