@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ethers } from 'ethers';
-import { fromBech32, toHex } from '@cosmjs/encoding';
+import { bech32 } from 'bech32';
 import { NFTStatusDto } from '../dtos/n1nj4.dto';
 import axios from 'axios';
 
@@ -70,6 +70,7 @@ export class NFTService {
 
   /**
    * 将 Injective 地址 (inj1...) 转换为 EVM 地址 (0x...)
+   * 使用 bech32 库 (CommonJS 兼容)
    */
   private injectiveToEvmAddress(injectiveAddress: string): string {
     try {
@@ -79,9 +80,11 @@ export class NFTService {
       }
 
       // 解码 Bech32 地址
-      const { data } = fromBech32(injectiveAddress);
+      const decoded = bech32.decode(injectiveAddress);
+      // 将 5-bit words 转换为 8-bit bytes
+      const bytes = bech32.fromWords(decoded.words);
       // 转换为十六进制
-      const evmAddress = '0x' + toHex(data);
+      const evmAddress = '0x' + Buffer.from(bytes).toString('hex');
       
       this.logger.debug(
         `Address conversion: ${injectiveAddress} → ${evmAddress}`,
