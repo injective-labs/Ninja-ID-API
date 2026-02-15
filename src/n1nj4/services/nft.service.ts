@@ -40,6 +40,8 @@ export class NFTService {
   private readonly rpcUrl: string;
   private readonly nftContractAddress: string;
   private readonly blockscoutApiUrl: string;
+  private provider: ethers.providers.JsonRpcProvider | null = null;
+  private contract: ethers.Contract | null = null;
 
   constructor() {
     this.rpcUrl = process.env.INJECTIVE_RPC_URL || '';
@@ -53,6 +55,21 @@ export class NFTService {
     }
     if (!this.nftContractAddress) {
       this.logger.warn('NFT_CONTRACT_ADDRESS not set, NFT checks will fail');
+    }
+    
+    // 预初始化 provider 和 contract
+    try {
+      if (this.rpcUrl && this.nftContractAddress) {
+        this.provider = new ethers.providers.JsonRpcProvider(this.rpcUrl);
+        this.contract = new ethers.Contract(
+          this.nftContractAddress,
+          ERC721_ABI,
+          this.provider,
+        );
+        this.logger.log('✅ NFT contract initialized');
+      }
+    } catch (error) {
+      this.logger.error(`Failed to initialize NFT contract: ${error.message}`);
     }
   }
 
@@ -92,23 +109,20 @@ export class NFTService {
         `Checking N1NJ4 NFT ownership for wallet: ${walletAddress}`,
       );
 
+      if (!this.contract || !this.provider) {
+        throw new Error('NFT contract not initialized');
+      }
+
       // 转换 Injective 地址为 EVM 地址
       const evmAddress = this.injectiveToEvmAddress(walletAddress);
       this.logger.log(`Using EVM address for contract call: ${evmAddress}`);
 
-      const provider = new ethers.providers.JsonRpcProvider(this.rpcUrl);
-      const contract = new ethers.Contract(
-        this.nftContractAddress,
-        ERC721_ABI,
-        provider,
-      );
-
       // 检查该地址持有的NFT数量
-      const balance = await contract.balanceOf(evmAddress);
+      const balance = await this.contract.balanceOf(evmAddress);
 
       if (balance.gt(0)) {
         // 有NFT，获取第一个NFT的Token ID
-        const tokenId = await contract.tokenOfOwnerByIndex(evmAddress, 0);
+        const tokenId = await this.contract.tokenOfOwnerByIndex(evmAddress, 0);
 
         this.logger.log(
           `✅ N1NJ4 NFT detected! Token ID: ${tokenId.toString()}`,
