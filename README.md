@@ -1,3 +1,131 @@
+# Ninja ID API (N1NJ4) — Quickstart / 使用说明
+
+A NestJS API providing identity-aware endpoints gated by N1NJ4 NFT ownership. Routes are under the global prefix `/api`.
+
+## Prerequisites / 前置依赖
+- Node.js 18+ (LTS 推荐)
+- pnpm 或 npm（示例使用 pnpm）
+- PostgreSQL 数据库（本地或 Supabase）
+- Redis（本地或 Upstash）
+- Injective EVM JSON-RPC 节点 URL
+- 已部署的 N1NJ4 ERC-721 合约地址（Injective EVM）
+
+## Setup / 本地运行
+1) 配置环境变量（复制并修改 .env）
+```bash
+cp .env.example .env
+```
+2) 安装依赖并启动
+```bash
+pnpm install
+pnpm start:dev
+```
+默认启动在 `http://localhost:3001`，全局前缀为 `/api`。
+
+## Required Environment / 必需环境变量
+见 [.env.example](./.env.example)。关键项：
+- `DATABASE_URL`: PostgreSQL 连接串（支持 Supabase）
+- `REDIS_URL`: Redis 连接串（支持 Upstash）
+- `JWT_SECRET`: 用于签发 API Token
+- `INJECTIVE_RPC_URL`: Injective EVM 的 JSON-RPC
+- `NFT_CONTRACT_ADDRESS`: N1NJ4 ERC-721 合约地址
+- `BLOCKSCOUT_API_URL`: Blockscout API（默认已配置测试网）
+- `RP_ID`, `ORIGINS`: Passkey 服务必须（即使暂不使用，也需提供）
+
+## Endpoints / 接口说明
+Base URL: `http://localhost:3001/api`
+
+1) POST `/v1/n1nj4/verify` — 验证身份（严格 NFT-Gating）
+- 仅 N1NJ4 NFT 持有者可通过并获得 `n1nj4Token`。
+- Request Body:
+```json
+{
+  "walletAddress": "inj1abc...xyz",
+  "credentialId": "cred_12345"
+}
+```
+- cURL:
+```bash
+curl -X POST \
+  http://localhost:3001/api/v1/n1nj4/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "walletAddress": "inj1yourwallet...",
+    "credentialId": "cred_demo_001"
+  }'
+```
+- 成功响应 (示例):
+```json
+{
+  "success": true,
+  "n1nj4Token": "<JWT>",
+  "identityId": "<uuid>",
+  "walletAddress": "inj1...",
+  "nftStatus": { "hasN1NJ4": true, "tokenId": "1", "tier": "Origin", "acquiredAt": 173xxx }
+}
+```
+- 非持有者返回 `401 Unauthorized`。
+
+2) GET `/v1/n1nj4/identities?walletAddresses=inj1a,inj1b` — 批量查询身份
+- cURL:
+```bash
+curl "http://localhost:3001/api/v1/n1nj4/identities?walletAddresses=inj1aaa...,inj1bbb..."
+```
+- 响应 (示例):
+```json
+{
+  "identities": [
+    {
+      "walletAddress": "inj1aaa...",
+      "isVerified": true,
+      "credentialId": "cred_demo_001",
+      "reputationScore": 72.5,
+      "lastVerifiedAt": 173xxx,
+      "nftStatus": { "hasN1NJ4": true, "tokenId": "1", "tier": "Origin", "acquiredAt": 173xxx }
+    },
+    { "walletAddress": "inj1bbb...", "isVerified": false, "credentialId": "", "reputationScore": 0, "lastVerifiedAt": 0, "nftStatus": { "hasN1NJ4": false, "tokenId": null, "tier": null } }
+  ]
+}
+```
+
+3) GET `/v1/n1nj4/reputation/:credentialId` — 获取信誉评分
+- cURL:
+```bash
+curl "http://localhost:3001/api/v1/n1nj4/reputation/cred_demo_001"
+```
+- 响应 (示例):
+```json
+{
+  "credentialId": "cred_demo_001",
+  "overallScore": 78.4,
+  "breakdown": {
+    "nftHolder": 10,
+    "transactionCount": 8.5,
+    "stakingDuration": 6.2,
+    "verificationFrequency": 7.0
+  },
+  "tier": "Gold",
+  "badges": ["N1NJ4 Holder","Active Developer"]
+}
+```
+
+4) GET `/v1/n1nj4/developer/:credentialId` — 开发者档案
+- cURL:
+```bash
+curl "http://localhost:3001/api/v1/n1nj4/developer/cred_demo_001"
+```
+- 响应包含钱包、NFT 画像、信誉评分与简要验证历史。
+
+## Notes / 说明
+- 全局前缀为 `api`，所以完整路径形如：`/api/v1/n1nj4/...`
+- `INJECTIVE_RPC_URL` 与 `NFT_CONTRACT_ADDRESS` 未配置将导致 `verify` 报错或返回未持有。
+- `RP_ID` 与 `ORIGINS` 为 Passkey 服务所需；模块已加载，必须配置。
+- CORS：`ORIGINS` 列表内来源允许跨域；Postman/cURL（无 Origin）默认放行。
+
+## Health Check / 健康检查
+- 基础信息: `GET /api` 返回运行环境及集成状态（DB/Redis/Blockscout）。
+
+如需我直接填好 `.env` 示例中的测试网参数或加一个一键测试脚本（shell/cURL），告诉我你的偏好即可。
 # Ninja-ID-API
 
 A comprehensive identity verification and reputation scoring API built on the Injective blockchain. Ninja-ID combines NFT ownership verification, multi-dimensional reputation scoring, and Passkey authentication to create a trustworthy identity platform.
@@ -131,15 +259,15 @@ pnpm run start:prod
 
 ```bash
 # Test Passkey Challenge
-curl -X POST http://localhost:3000/api/passkey/challenge \
+curl -X POST http: https://ninja-id-api.vercel.app/api/passkey/challenge \
   -H "Content-Type: application/json" \
   -d '{"action":"register"}'
 
 # Test N1NJ4 Reputation
-curl http://localhost:3000/api/v1/n1nj4/reputation/{credentialId}
+curl http:// https://ninja-id-api.vercel.app/api/v1/n1nj4/reputation/{credentialId}
 
 # Test Health
-curl http://localhost:3000/health
+curl http:// https://ninja-id-api.vercel.app/health
 ```
 
 ## Technology Stack
