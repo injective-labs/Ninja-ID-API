@@ -49,7 +49,7 @@ import { N1NJ4Module } from './n1nj4/n1nj4.module';
     }),
 
     PasskeyModule,
-    N1NJ4Module,
+    // N1NJ4Module, // 临时禁用以测试
   ],
   controllers: [AppController],
   providers: [AppService],
