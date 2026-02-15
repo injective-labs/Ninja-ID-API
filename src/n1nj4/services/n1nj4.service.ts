@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { AuthService } from '../../auth/auth.service';
@@ -45,6 +45,20 @@ export class N1NJ4Service {
       // ⭐ 第1步: 检查N1NJ4 NFT所有权
       const nftStatus = await this.nftService.checkN1NJ4Ownership(
         dto.walletAddress,
+      );
+
+      // ⭐ 严格模式: 只有NFT持有者才能验证身份
+      if (!nftStatus.hasN1NJ4) {
+        this.logger.warn(
+          `[N1NJ4 Verify] ❌ Rejected - No NFT found for wallet: ${dto.walletAddress}`,
+        );
+        throw new UnauthorizedException(
+          'N1NJ4 NFT required. Please mint your N1NJ4:Origin NFT at https://n1nj4.io to access this API.',
+        );
+      }
+
+      this.logger.log(
+        `[N1NJ4 Verify] ✅ NFT Verified - Token ID: ${nftStatus.tokenId}`,
       );
 
       // 第2步: 检查凭证是否已存在
@@ -280,11 +294,24 @@ export class N1NJ4Service {
     // 1. NFT持有评分 (权重50%)
     const nftScore = identity.nftHolder ? 10 : 0;
 
-    // 2. 交易次数评分 (权重15%) - 基于验证次数模拟
-    const transactionScore = Math.min(
-      10,
-      (identity.verificationCount || 1) * 2,
-    );
+    // 2. 交易次数评分 (权重15%) - 从链上实际查询
+    let transactionScore = 0;
+    try {
+      const txCount = await this.nftService.getTransactionCount(
+        identity.walletAddress,
+      );
+      // 每5笔交易得1分，最高10分
+      transactionScore = Math.min(10, txCount / 5);
+      this.logger.debug(
+        `Transaction count for ${identity.walletAddress}: ${txCount}, score: ${transactionScore}`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to get transaction count, using fallback: ${error.message}`,
+      );
+      // 降级方案：基于验证次数模拟
+      transactionScore = Math.min(10, (identity.verificationCount || 1) * 2);
+    }
 
     // 3. 质押时长评分 (权重15%) - 基于账户年龄
     const daysSinceCreation =

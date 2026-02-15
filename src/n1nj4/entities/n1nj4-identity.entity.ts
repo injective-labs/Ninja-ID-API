@@ -29,7 +29,7 @@ export class N1NJ4Identity {
   @Column({ type: 'varchar', nullable: true })
   nftTier: string | null; // NFT等级: "Origin", "Premium" 等
 
-  @Column({ type: 'int', default: 50 })
+  @Column({ type: 'float', default: 50 })
   reputationScore: number; // 信誉分 (0-100)
 
   @Column({ type: 'boolean', default: true })

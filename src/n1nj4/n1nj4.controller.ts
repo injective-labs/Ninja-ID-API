@@ -8,7 +8,7 @@ import {
   DeveloperProfileDto,
 } from './dtos/n1nj4.dto';
 
-@Controller('api/v1/n1nj4')
+@Controller('v1/n1nj4')
 export class N1NJ4Controller {
   private readonly logger = new Logger(N1NJ4Controller.name);
 
