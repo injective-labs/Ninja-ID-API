@@ -9,6 +9,7 @@ import {
   VerifyN1NJ4ResponseDto,
   QueryIdentitiesResponseDto,
   IdentityInfoDto,
+  
   ReputationDto,
   ReputationBreakdownDto,
   DeveloperProfileDto,
